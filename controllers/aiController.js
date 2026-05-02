@@ -14,7 +14,6 @@ exports.generateIntakeChat = asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate AI response
   const chatResponse = await geminiService.generateIntakeChat({
     conversation,
     message_count,
