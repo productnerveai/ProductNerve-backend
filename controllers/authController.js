@@ -36,19 +36,16 @@ exports.signup = async (req, res, next) => {
       company_name
     });
 
-    // Generate email verification token
-    const verificationToken = user.getEmailVerificationToken();
+    // Generate 6-digit email verification code
+    const verificationCode = user.getEmailVerificationCode();
     await user.save();
-
-    // Create verification URL
-    const verificationUrl = `${req.protocol}://${req.get('host')}/api/auth/verify-email/${verificationToken}`;
 
     // Read email template
     const templatePath = path.join(__dirname, '../templates/emailVerification.html');
     let emailTemplate = fs.readFileSync(templatePath, 'utf8');
     
     // Replace placeholders with actual values
-    emailTemplate = emailTemplate.replace('{{VERIFICATION_TOKEN}}', verificationToken);
+    emailTemplate = emailTemplate.replace('{{VERIFICATION_CODE}}', verificationCode);
     emailTemplate = emailTemplate.replace('{{CURRENT_YEAR}}', new Date().getFullYear());
 
     // Send verification email
@@ -281,100 +278,12 @@ exports.resetPasswordPage = async (req, res, next) => {
     });
 
     if (!user) {
-      // Create error page
-      const errorPage = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <title>Reset Link Invalid - Product Nerve</title>
-          <meta http-equiv="refresh" content="5;url=http://localhost:5173/forgot-password">
-          <style>
-              body {
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  height: 100vh;
-                  margin: 0;
-                  background-color: #f4f4f4;
-              }
-              .container {
-                  text-align: center;
-                  background: white;
-                  padding: 40px;
-                  border-radius: 10px;
-                  box-shadow: 0 0 20px rgba(0,0,0,0.1);
-              }
-              .error-icon {
-                  color: #dc3545;
-                  font-size: 48px;
-                  margin-bottom: 20px;
-              }
-              h1 { color: #333; margin-bottom: 10px; }
-              p { color: #666; margin-bottom: 20px; }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="error-icon">✗</div>
-              <h1>Reset Link Invalid</h1>
-              <p>The password reset link is invalid or has expired. Please request a new password reset.</p>
-              <p>You will be redirected to the forgot password page in 5 seconds...</p>
-              <p>If you are not redirected automatically, <a href="http://localhost:5173/forgot-password">click here</a>.</p>
-          </div>
-      </body>
-      </html>
-      `;
-
-      res.status(400).send(errorPage);
-      return;
+      // Redirect directly to frontend with error
+      return res.redirect(302, `https://productnerve.com/forgot-password?reset=error&message=invalid_token`);
     }
 
-    // Create success page with redirect
-    const successPage = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Reset Password - Product Nerve</title>
-        <meta http-equiv="refresh" content="3;url=http://localhost:5173/reset-password?token=${req.params.token}">
-        <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-                background-color: #f4f4f4;
-            }
-            .container {
-                text-align: center;
-                background: white;
-                padding: 40px;
-                border-radius: 10px;
-                box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            }
-            .success-icon {
-                color: #25696C;
-                font-size: 48px;
-                margin-bottom: 20px;
-            }
-            h1 { color: #333; margin-bottom: 10px; }
-            p { color: #666; margin-bottom: 20px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="success-icon">🔐</div>
-            <h1>Reset Password Validated</h1>
-            <p>Your reset token is valid. You will be redirected to the reset password page in 3 seconds...</p>
-            <p>If you are not redirected automatically, <a href="http://localhost:5173/reset-password?token=${req.params.token}">click here</a>.</p>
-        </div>
-    </body>
-    </html>
-    `;
-
-    res.status(200).send(successPage);
+    // Redirect directly to frontend with success
+    res.redirect(302, `https://productnerve.com/reset-password?token=${req.params.token}&validated=true`);
   } catch (error) {
     next(error);
   }
@@ -715,85 +624,54 @@ exports.getProfileCompletionStatus = async (req, res, next) => {
   }
 };
 
-// @desc    Verify email
-// @route   GET /api/auth/verify-email/:token
+// @desc    Verify email with 6-digit code
+// @route   POST /api/auth/verify-email
 // @access  Public
 exports.verifyEmail = async (req, res, next) => {
   try {
-    console.log('Verification request received for token:', req.params.token);
+    const { email, code } = req.body;
     
-    // Get hashed token
-    const verificationToken = require('crypto')
-      .createHash('sha256')
-      .update(req.params.token)
-      .digest('hex');
+    console.log('Email verification request received for:', email);
 
-    console.log('Hashed token:', verificationToken);
-    console.log('Current time:', Date.now());
-
-    // Find user by verification token and check if not expired
-    const user = await User.findOne({
-      email_verification_token: verificationToken,
-      email_verification_expires: { $gt: Date.now() }
-    });
-
-    console.log('Found user:', user ? 'Yes' : 'No');
-    if (user) {
-      console.log('User email verification expires:', user.email_verification_expires);
-      console.log('Token is expired?', Date.now() > user.email_verification_expires);
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and verification code are required'
+      });
     }
 
-    if (!user) {
-      // Create error page
-      const errorPage = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <title>Verification Failed - Product Nerve</title>
-          <meta http-equiv="refresh" content="5;url=http://localhost:5173/login">
-          <style>
-              body {
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  height: 100vh;
-                  margin: 0;
-                  background-color: #f4f4f4;
-              }
-              .container {
-                  text-align: center;
-                  background: white;
-                  padding: 40px;
-                  border-radius: 10px;
-                  box-shadow: 0 0 20px rgba(0,0,0,0.1);
-              }
-              .error-icon {
-                  color: #dc3545;
-                  font-size: 48px;
-                  margin-bottom: 20px;
-              }
-              h1 { color: #333; margin-bottom: 10px; }
-              p { color: #666; margin-bottom: 20px; }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="error-icon">✗</div>
-              <h1>Verification Failed</h1>
-              <p>The verification link is invalid or has expired. Please request a new verification email.</p>
-              <p>You will be redirected to the login page in 5 seconds...</p>
-              <p>If you are not redirected automatically, <a href="http://localhost:5173/login">click here</a>.</p>
-          </div>
-      </body>
-      </html>
-      `;
+    // Find user by email
+    const user = await User.findOne({ email });
 
-      res.status(400).send(errorPage);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if email is already verified
+    if (user.email_verified) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is already verified'
+      });
+    }
+
+    // Verify the 6-digit code
+    const isValidCode = user.verifyEmailCode(code);
+
+    if (!isValidCode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired verification code'
+      });
     }
 
     // Set email as verified and remove verification fields
     user.email_verified = true;
+    user.email_verification_code = undefined;
+    user.email_verification_code_expires = undefined;
     user.email_verification_token = undefined;
     user.email_verification_expires = undefined;
     await user.save();
@@ -801,51 +679,93 @@ exports.verifyEmail = async (req, res, next) => {
     // Generate JWT token for automatic login
     const token = generateToken(user._id);
 
-    // Create success page with redirect
-    const successPage = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Email Verified - Product Nerve</title>
-        <meta http-equiv="refresh" content="3;url=http://localhost:5173/login?verified=true&token=${token}">
-        <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-                background-color: #f4f4f4;
-            }
-            .container {
-                text-align: center;
-                background: white;
-                padding: 40px;
-                border-radius: 10px;
-                box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            }
-            .success-icon {
-                color: #28a745;
-                font-size: 48px;
-                margin-bottom: 20px;
-            }
-            h1 { color: #333; margin-bottom: 10px; }
-            p { color: #666; margin-bottom: 20px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="success-icon">✓</div>
-            <h1>Email Verified Successfully!</h1>
-            <p>Your account has been activated. You will be redirected to the login page in 3 seconds...</p>
-            <p>If you are not redirected automatically, <a href="http://localhost:5173/login?verified=true&token=${token}">click here</a>.</p>
-        </div>
-    </body>
-    </html>
-    `;
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Email verified successfully!',
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          company_name: user.company_name,
+          plan_type: user.plan_type,
+          role: user.role,
+          email_verified: user.email_verified
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    res.status(200).send(successPage);
+// @desc    Resend verification code
+// @route   POST /api/auth/resend-verification
+// @access  Public
+exports.resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if email is already verified
+    if (user.email_verified) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is already verified'
+      });
+    }
+
+    // Generate new 6-digit verification code
+    const verificationCode = user.getEmailVerificationCode();
+    await user.save();
+
+    // Read email template
+    const templatePath = path.join(__dirname, '../templates/emailVerification.html');
+    let emailTemplate = fs.readFileSync(templatePath, 'utf8');
+    
+    // Replace placeholders with actual values
+    emailTemplate = emailTemplate.replace('{{VERIFICATION_CODE}}', verificationCode);
+    emailTemplate = emailTemplate.replace('{{CURRENT_YEAR}}', new Date().getFullYear());
+
+    // Send verification email
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: 'Verify Your Email - Product Nerve',
+      html: emailTemplate
+    });
+
+    if (!emailResult.success) {
+      console.error('Failed to send verification email:', emailResult.error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send verification email'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Verification code sent successfully!'
+      }
+    });
   } catch (error) {
     next(error);
   }

@@ -95,6 +95,8 @@ const userSchema = new mongoose.Schema({
   },
   email_verification_token: String,
   email_verification_expires: Date,
+  email_verification_code: String,
+  email_verification_code_expires: Date,
   last_login: Date,
   // Profile completion fields
   official_company_name: String,
@@ -154,6 +156,26 @@ userSchema.methods.getEmailVerificationToken = function() {
   this.email_verification_expires = Date.now() + 10 * 60 * 1000;
 
   return verificationToken;
+};
+
+// Generate 6-digit email verification code
+userSchema.methods.getEmailVerificationCode = function() {
+  // Generate 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // Set code and expire (10 minutes)
+  this.email_verification_code = code;
+  this.email_verification_code_expires = Date.now() + 10 * 60 * 1000;
+  
+  return code;
+};
+
+// Verify 6-digit code
+userSchema.methods.verifyEmailCode = function(enteredCode) {
+  return (
+    this.email_verification_code === enteredCode &&
+    this.email_verification_code_expires > Date.now()
+  );
 };
 
 module.exports = mongoose.model('User', userSchema);

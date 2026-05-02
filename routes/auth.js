@@ -9,6 +9,7 @@ const {
   resetPassword,
   resetPasswordPage,
   verifyEmail,
+  resendVerification,
   changePassword,
   updateProfile,
   submitProfileCompletion,
@@ -45,6 +46,7 @@ router.put('/change-password', protect, validateChangePassword, changePassword);
 router.put('/update-profile', protect, validateUpdateProfile, updateProfile);
 router.post('/profile-completion', protect, validateProfileCompletion, submitProfileCompletion);
 router.get('/profile-completion', protect, getProfileCompletionStatus);
-router.get('/verify-email/:token', verifyEmail);
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerification);
 
 module.exports = router;
