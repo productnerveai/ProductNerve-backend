@@ -11,6 +11,8 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+.BACKEND_DOCUMENTATION.md
+
 # Logs
 logs
 *.log
