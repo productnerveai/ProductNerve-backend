@@ -40,6 +40,9 @@ app.use('/api/artifacts', require('./routes/artifacts'));
 app.use('/api/support', require('./routes/support'));
 app.use('/api/validation', require('./routes/validation'));
 app.use('/api/ai', require('./routes/ai'));
+app.post('/api/phase2-intake-chat', require('./controllers/aiController').generatePhase2IntakeResponse);
+app.post('/api/phase3-intake-chat', require('./controllers/aiController').generatePhase3IntakeResponse);
+app.use('/api', require('./routes/ragRoutes'));
 
 // Error handling middleware
 const errorHandler = require('./middleware/errorHandler');

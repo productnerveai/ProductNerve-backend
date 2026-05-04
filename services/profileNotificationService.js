@@ -19,12 +19,24 @@ class ProfileNotificationService {
     try {
       console.log('Checking profile completion notifications...');
       
-      // Find users who need notifications
+      // Check database connection first
+      const dbState = User.db.readyState;
+      if (dbState !== 1) {
+        console.error('Database not connected, state:', dbState);
+        return;
+      }
+      
+      // Find users who need notifications with lean query, timeout, and pagination
       const usersNeedingNotifications = await User.find({
         email_verified: true,
         'profile_completion_status': 'not_submitted',
         user_status: 'active'
-      });
+      })
+      .select('email first_name createdAt profile_notification_schedule')
+      .lean()
+      .limit(100) // Limit to prevent memory issues
+      .maxTimeMS(5000) // 5 second timeout
+      .exec();
 
       console.log(`Found ${usersNeedingNotifications.length} users for profile completion notifications`);
 
@@ -34,7 +46,11 @@ class ProfileNotificationService {
 
       console.log('Profile completion notifications check completed');
     } catch (error) {
-      console.error('Error in profile notification service:', error);
+      if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+        console.error('MongoDB timeout in profile notification service - database may be slow or unresponsive');
+      } else {
+        console.error('Error in profile notification service:', error);
+      }
     }
   }
 
@@ -94,8 +110,17 @@ class ProfileNotificationService {
       }
     }
 
-    // Save the updated schedule
-    await user.save();
+    // Save updated schedule - convert lean doc back to User model if needed
+    if (user._id && typeof user.save === 'function') {
+      await user.save();
+    } else {
+      // For lean documents, we need to fetch and update the full User document
+      const fullUser = await User.findById(user._id).maxTimeMS(3000);
+      if (fullUser) {
+        fullUser.profile_notification_schedule = schedule;
+        await fullUser.save();
+      }
+    }
   }
 
   async sendNotification(user, notificationType) {

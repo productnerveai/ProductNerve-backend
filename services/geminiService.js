@@ -787,7 +787,7 @@ Respond ONLY with valid JSON. No markdown fences, no preamble.
   }
 
   buildIntakeChatPrompt(chatData) {
-    const { conversation, message_count } = chatData;
+    const { conversation, message_count, ragContext } = chatData;
 
     const completionMessage = `<INTAKE_COMPLETE>{
   "idea_definition": "",
@@ -804,6 +804,13 @@ Respond ONLY with valid JSON. No markdown fences, no preamble.
 }</INTAKE_COMPLETE>`;
 
     return `You are a world-class venture strategist and active listener conducting a Phase 1 validation interview. Your job is NOT to run through a checklist — it is to deeply understand this specific venture idea through genuine conversation.
+
+${ragContext ? `
+PROJECT KNOWLEDGE BASE CONTEXT:
+${ragContext}
+
+This context contains project-specific files uploaded by the user. Reference this information to provide more accurate and personalized analysis. Use these documents as secondary grounding to improve your understanding of the project.
+` : ''}
 
 CONVERSATION SO FAR:
 ${conversation}
@@ -1267,7 +1274,7 @@ Respond ONLY with valid JSON, no markdown fences:
     } throw new Error('Failed to generate AI response');
   }
 
-  buildPhase2IntakePrompt(messages) {
+  buildPhase2IntakePrompt(messages, ragContext = null) {
     const conversation = messages.map(m => `${m.role === 'user' ? 'FOUNDER' : 'ADVISOR'}: ${m.content}`).join('\n\n');
     const message_count = messages.filter(m => m.role === 'user').length;
 
@@ -1286,6 +1293,13 @@ Respond ONLY with valid JSON, no markdown fences:
 }</INTAKE_COMPLETE>`;
 
     return `You are an expert venture execution strategist conducting a Phase 2 execution capacity interview. Your job is to deeply understand the founder's execution reality — not run through a checklist.
+
+${ragContext ? `
+PROJECT KNOWLEDGE BASE CONTEXT:
+${ragContext}
+
+This context contains project-specific files uploaded by the user. Reference this information to provide more accurate and personalized analysis of their execution capacity and resources.
+` : ''}
 
 CONVERSATION SO FAR:
 ${conversation}
@@ -1634,7 +1648,7 @@ Analyze all 15 GTM areas and respond ONLY with valid JSON:
     }
   }
 
-  buildPhase3IntakePrompt(messages) {
+  buildPhase3IntakePrompt(messages, ragContext = null) {
     const conversation = messages.map(msg =>
       `${msg.role === 'user' ? 'FOUNDER' : 'ADVISOR'}: ${msg.content}`
     ).join('\n\n');
@@ -1643,6 +1657,13 @@ Analyze all 15 GTM areas and respond ONLY with valid JSON:
     const completionMessage = `<INTAKE_COMPLETE>{"ideal_customer":"","buying_trigger":"","customer_discovery":"","distribution_access":"","revenue_model":"","pricing_hypothesis":"","sales_motion":"","time_to_value":"","retention_logic":"","competitive_edge":"","channel_strategy":"","cac_estimate":"","growth_target":"","gtm_capital":"","scale_intent":""}</INTAKE_COMPLETE>`;
 
     return `You are a Venture GTM & Growth Intelligence Engine conducting a Phase 3 growth strategy interview. Your job is to deeply understand how this venture will reach, convert, and retain its customers — not just collect answers to a list of questions.
+
+${ragContext ? `
+PROJECT KNOWLEDGE BASE CONTEXT:
+${ragContext}
+
+This context contains project-specific files uploaded by the user. Reference this information to provide more accurate and personalized analysis of their GTM strategy and growth potential.
+` : ''}
 
 CONVERSATION SO FAR:
 ${conversation}

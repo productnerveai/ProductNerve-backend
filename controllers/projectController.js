@@ -132,7 +132,13 @@ exports.createProject = asyncHandler(async (req, res) => {
   const project = await Project.create({
     workspace_id: targetWorkspaceId,
     name,
-    description
+    description,
+    rag_folder: {
+      files: [],
+      total_size: 0,
+      max_size_limit: 52428800, // 50MB
+      last_updated: new Date()
+    }
   });
 
   res.status(201).json({

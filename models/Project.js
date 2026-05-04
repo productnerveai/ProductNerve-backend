@@ -1098,6 +1098,51 @@ const projectSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // RAG Folder for project knowledge base
+  rag_folder: {
+    files: [{
+      filename: {
+        type: String,
+        required: true
+      },
+      original_name: {
+        type: String,
+        required: true
+      },
+      file_size: {
+        type: Number,
+        required: true
+      },
+      file_type: {
+        type: String,
+        required: true
+      },
+      upload_date: {
+        type: Date,
+        default: Date.now
+      },
+      file_url: {
+        type: String,
+        required: true
+      },
+      content_summary: {
+        type: String,
+        trim: true
+      }
+    }],
+    total_size: {
+      type: Number,
+      default: 0
+    },
+    max_size_limit: {
+      type: Number,
+      default: 52428800 // 50MB in bytes
+    },
+    last_updated: {
+      type: Date,
+      default: Date.now
+    }
+  },
   // Project access control
   project_locked: {
     type: Boolean,
