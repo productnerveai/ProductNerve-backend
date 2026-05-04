@@ -30,7 +30,7 @@ const uploadFileToSpaces = async (fileBuffer, fileName, mimeType, folder = 'prof
       Key: uniqueFileName,
       Body: fileBuffer,
       ContentType: mimeType,
-      ACL: 'private' // Set to 'public-read' if you want public access
+      ACL: 'public-read' // Make profile documents publicly accessible
     };
 
     const result = await s3.upload(params).promise();

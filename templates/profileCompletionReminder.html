@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Your Profile - Product Nerve</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .complete-button {
+            display: inline-block;
+            background-color: #25696C;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .complete-button:hover {
+            background-color: #1e5456;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 30px;
+        }
+        .benefits {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .benefits h3 {
+            margin-top: 0;
+            color: #25696C;
+        }
+        .benefits ul {
+            margin-bottom: 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="https://productnerve.com/assets/logo-mark-Dbcgc3q5.png" alt="Product Nerve" style="max-width: 150px; height: auto;">
+            </div>
+        </div>
+        
+        <div class="content">
+            <h2>Complete Your Profile, {{USER_NAME}}!</h2>
+            <p>You registered {{NOTIFICATION_TYPE}} and we're excited to have you on board. To get the most out of Product Nerve and unlock all features, please complete your profile.</p>
+            
+            <div class="benefits">
+                <h3>Why Complete Your Profile?</h3>
+                <ul>
+                    <li>✓ Unlock advanced features and tools</li>
+                    <li>✓ Increase your workspace and project limits</li>
+                    <li>✓ Get access to premium support</li>
+                    <li>✓ Build trust with your team and clients</li>
+                    <li>✓ Receive personalized recommendations</li>
+                </ul>
+            </div>
+            
+            <p>Complete your profile in just a few minutes:</p>
+            
+            <div style="text-align: center;">
+                <a href="https://productnerve.com/app/settings" class="complete-button">Complete Profile Now</a>
+            </div>
+            
+            <div class="warning">
+                <strong>Note:</strong> This is an automated reminder sent {{NOTIFICATION_TYPE}}. You can manage your notification preferences in your account settings.
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated message from Product Nerve. Please do not reply to this email.</p>
+            <p>&copy; {{CURRENT_YEAR}} Product Nerve. All rights reserved.</p>
+            <p style="margin-top: 10px;">
+                <a href="https://productnerve.com/unsubscribe?email={{USER_EMAIL}}" style="color: #666; text-decoration: underline;">Unsubscribe</a> | 
+                <a href="https://productnerve.com/privacy" style="color: #666; text-decoration: underline;">Privacy Policy</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

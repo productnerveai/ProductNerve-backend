@@ -535,6 +535,59 @@ exports.submitProfileCompletion = async (req, res, next) => {
         custom_email,
         phone
       } = req.body);
+      
+      // Validation for JSON data
+      if (!official_company_name || official_company_name.trim().length < 2 || official_company_name.trim().length > 255) {
+        return res.status(400).json({
+          success: false,
+          error: 'Official company name must be between 2 and 255 characters'
+        });
+      }
+      
+      if (registration_number && registration_number.trim().length > 100) {
+        return res.status(400).json({
+          success: false,
+          error: 'Registration number cannot exceed 100 characters'
+        });
+      }
+      
+      if (website && !website.match(/^https?:\/\/.+/)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Please provide a valid website URL with http:// or https://'
+        });
+      }
+      
+      if (custom_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(custom_email)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Please provide a valid business email'
+        });
+      }
+      
+      if (phone && (phone.trim().length < 10 || phone.trim().length > 20)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Phone number must be between 10 and 20 characters'
+        });
+      }
+
+      // Handle file upload from JSON data
+      if (req.body.document && req.body.document.data) {
+        try {
+          const fileData = req.body.document;
+          const fileBuffer = Buffer.from(fileData.data, 'base64');
+          const fileName = fileData.name || 'document.pdf';
+          const mimeType = fileData.type || 'application/pdf';
+          
+          // Upload to DigitalOcean Spaces
+          profileDocumentUrl = await uploadFileToSpaces(fileBuffer, fileName, mimeType);
+          console.log('Document uploaded successfully:', profileDocumentUrl);
+        } catch (uploadError) {
+          console.error('File upload error:', uploadError);
+          // Continue without file upload but log the error
+        }
+      }
     }
 
     // Get user

@@ -424,9 +424,9 @@ EXECUTION CONTEXT:
       const result = {};
 
       const sectionMap = {
-        simple: ['productInformation','goalsAndObjectives','targetUsers','problemStatement','valueProposition','assumptions','constraints','backgroundAndStrategicFit','productRoadmap','scope','coreFeatures','releaseCriteria','successMetrics','dependencies','risks','exclusions','strategicNote'],
-        growth: ['growthGoals','icpDefinition','acquisitionChannels','conversionStrategy','retentionStrategy','monetizationModel','growthAssumptions','growthConstraints','strategicGrowthFit','growthRoadmap','userLifecycleScope','growthFeatures','technicalGrowthRequirements','experimentationPlan','growthRisks'],
-        technical: ['technicalObjectives','coreProductFeatures','technicalSpecifications','coreTechnicalComponents','apiArchitecture','dataArchitecture','featureLevelTechnicalConsiderations','systemArchitecturePrinciples','highLevelArchitecture','securityModel','performanceTargets','scalabilityStrategy','integrationRequirements']
+        simple: ['productInformation', 'goalsAndObjectives', 'targetUsers', 'problemStatement', 'valueProposition', 'assumptions', 'constraints', 'backgroundAndStrategicFit', 'productRoadmap', 'scope', 'coreFeatures', 'releaseCriteria', 'successMetrics', 'dependencies', 'risks', 'exclusions', 'strategicNote'],
+        growth: ['growthGoals', 'icpDefinition', 'acquisitionChannels', 'conversionStrategy', 'retentionStrategy', 'monetizationModel', 'growthAssumptions', 'growthConstraints', 'strategicGrowthFit', 'growthRoadmap', 'userLifecycleScope', 'growthFeatures', 'technicalGrowthRequirements', 'experimentationPlan', 'growthRisks'],
+        technical: ['technicalObjectives', 'coreProductFeatures', 'technicalSpecifications', 'coreTechnicalComponents', 'apiArchitecture', 'dataArchitecture', 'featureLevelTechnicalConsiderations', 'systemArchitecturePrinciples', 'highLevelArchitecture', 'securityModel', 'performanceTargets', 'scalabilityStrategy', 'integrationRequirements']
       };
 
       (sectionMap[prdType] || []).forEach(section => {
@@ -755,7 +755,6 @@ Respond ONLY with valid JSON. No markdown fences, no preamble.
 
   async generateIntakeChat(chatData) {
     try {
-      console.log('DEBUG: Message count for intake chat:', chatData.message_count);
       const prompt = this.buildIntakeChatPrompt(chatData);
       let model = this.primaryModel;
       let modelName = 'gemini-2.5-flash';
@@ -765,24 +764,25 @@ Respond ONLY with valid JSON. No markdown fences, no preamble.
           const result = await model.generateContent(prompt);
           const response = await result.response;
           const text = response.text();
+          if (!text || !text.trim()) throw new Error('Empty response from model');
           return { response: text.trim(), model: modelName };
         } catch (error) {
           console.error(`Attempt ${attempt} failed with ${modelName}:`, error.message);
-          if (attempt === 1 && (error.message.includes('503') || error.message.includes('429') || error.message.includes('quota'))) {
+          if (attempt === 1) {
+            // Always swap to fallback on first failure, regardless of error type
             model = this.fallbackModel;
             modelName = 'gemini-1.5-flash';
             await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
           }
-          if (attempt === 2) {
-            if (error.message.includes('quota') || error.message.includes('429')) return this.getFallbackIntakeResponse(chatData);
-            throw new Error(`AI service temporarily unavailable. Error: ${error.message}`);
-          }
+          // Attempt 2 failed — return fallback response instead of throwing
+          console.warn('Both models failed, returning fallback intake response');
+          return this.getFallbackIntakeResponse(chatData);
         }
       }
     } catch (error) {
       console.error('Error generating intake chat:', error);
-      throw new Error('Failed to generate AI response');
+      return this.getFallbackIntakeResponse(chatData);
     }
   }
 
@@ -846,15 +846,22 @@ YOUR CORE BEHAVIORAL RULES
    Never stack two questions. Pick the single most important unanswered thing
    within the CURRENT area.
 
-4. USE THEIR WORDS BACK TO THEM
+4. FOLLOW-UP QUESTION LIMIT
+   Follow-up questions are only asked when the founder's answer is genuinely unclear,
+   incomplete, or contradictory. If the answer is clear and sufficient, move on immediately
+   — no follow-up needed.
+   Maximum ceiling: 3 follow-ups per area, 10 total across the conversation.
+   Never ask a follow-up just to fill space or confirm what is already obvious.
+
+5. USE THEIR WORDS BACK TO THEM
    Reference what they said: "You mentioned X — does that mean Y?"
    This shows you're listening, not just processing.
 
-5. NEVER MOVE ON UNTIL THE CURRENT AREA IS CLEAR
-   Do not transition to the next area until you have what you need from the current one.
-   A vague answer does not count as coverage — push for specifics within the area.
+6. NEVER MOVE ON UNTIL THE CURRENT AREA IS CLEAR
+   After the follow-up limit is reached, accept the best answer you have and move on.
+   A founder who repeats themselves or stays vague after 3 attempts has given you their answer.
 
-6. EARN THE NEXT TOPIC
+7. EARN THE NEXT TOPIC
    Only move to a new area when the current one is genuinely understood.
    Transition naturally without announcing the area name.
 
@@ -972,12 +979,12 @@ PROGRESS SO FAR: ${message_count} user messages sent.
 - Message 15+: If all 10 areas are genuinely covered, provide a 2–3 sentence synthesis then ask the founder to type "proceed".
 
 ${message_count >= 15 && conversation.toLowerCase().includes('proceed')
-      ? `The founder has typed "proceed". Extract all information from the conversation and emit the completion signal with real data filled in:\n\n${completionMessage}`
-      : ''}
+        ? `The founder has typed "proceed". Extract all information from the conversation and emit the completion signal with real data filled in:\n\n${completionMessage}`
+        : ''}
 
 ${message_count >= 15 && !conversation.toLowerCase().includes('proceed')
-      ? `You are near the end of the intake. Check coverage across all 10 areas. If any area is shallow, ask one more targeted question. If all areas are covered with depth, synthesize and ask them to type "proceed".`
-      : ''}
+        ? `You are near the end of the intake. Check coverage across all 10 areas. If any area is shallow, ask one more targeted question. If all areas are covered with depth, synthesize and ask them to type "proceed".`
+        : ''}
 
 ════════════════════════════════════
 TONE & STYLE
@@ -1229,35 +1236,35 @@ Respond ONLY with valid JSON, no markdown fences:
 
   async generatePhase2IntakeResponse(messages, projectId) {
     try {
-      const prompt = this.buildPhase2IntakePrompt(messages);
+      const prompt = this.buildIntakeChatPrompt(chatData);
       let model = this.primaryModel;
       let modelName = 'gemini-2.5-flash';
 
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          console.log(`Attempt ${attempt}: Using ${modelName} for Phase 2 intake...`);
           const result = await model.generateContent(prompt);
           const response = await result.response;
           const text = response.text();
+          if (!text || !text.trim()) throw new Error('Empty response from model');
           return { response: text.trim(), model: modelName };
         } catch (error) {
           console.error(`Attempt ${attempt} failed with ${modelName}:`, error.message);
-          if (attempt === 1 && (error.message.includes('503') || error.message.includes('429') || error.message.includes('quota'))) {
+          if (attempt === 1) {
+            // Always swap to fallback on first failure, regardless of error type
             model = this.fallbackModel;
             modelName = 'gemini-1.5-flash';
             await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
           }
-          if (attempt === 2) {
-            if (error.message.includes('quota') || error.message.includes('429')) return this.getPhase2FallbackIntakeResponse(messages);
-            throw new Error(`AI service temporarily unavailable. Error: ${error.message}`);
-          }
+          // Attempt 2 failed — return fallback response instead of throwing
+          console.warn('Both models failed, returning fallback intake response');
+          return this.getFallbackIntakeResponse(chatData);
         }
       }
     } catch (error) {
-      console.error('Error generating Phase 2 intake:', error);
-      throw new Error('Failed to generate AI response');
-    }
+      console.error('Error generating intake chat:', error);
+      return this.getFallbackIntakeResponse(chatData);
+    } throw new Error('Failed to generate AI response');
   }
 
   buildPhase2IntakePrompt(messages) {
@@ -1317,12 +1324,18 @@ YOUR CORE BEHAVIORAL RULES
 3. ONE QUESTION AT A TIME
    Never stack two questions. Pick the single most important unanswered thing
    within the CURRENT area.
+  
+4. FOLLOW-UP QUESTION LIMIT
+   Only ask a follow-up if the founder's answer leaves a genuine gap. A clear, specific
+   answer requires no follow-up — move on immediately.
+   Maximum ceiling: 3 follow-ups per area, 8 total across the conversation.
+   Do not probe an answer that already gives you what you need.
 
-4. NEVER MOVE ON UNTIL THE CURRENT AREA IS CLEAR
-   Do not transition to the next area until you have what you need from the current one.
-   A vague answer does not count as coverage — push for specifics within the area.
+5. NEVER MOVE ON UNTIL THE CURRENT AREA IS CLEAR
+   After the follow-up limit is reached, accept the best answer you have and move on.
+   A founder who repeats themselves or stays vague after 3 attempts has given you their answer.
 
-5. EARN THE NEXT TOPIC
+6. EARN THE NEXT TOPIC
    Only move to a new area when the current one is genuinely understood.
    Transition naturally without announcing the area name.
 
@@ -1430,12 +1443,12 @@ PROGRESS SO FAR: ${message_count} user messages sent.
 - Message 11+: If all 10 areas are genuinely covered, provide a 2–3 sentence synthesis then ask them to type "proceed".
 
 ${message_count >= 11 && conversation.toLowerCase().includes('proceed')
-      ? `The founder has typed "proceed". Extract all information from the conversation and emit the completion signal with real data filled in:\n\n${completionMessage}`
-      : ''}
+        ? `The founder has typed "proceed". Extract all information from the conversation and emit the completion signal with real data filled in:\n\n${completionMessage}`
+        : ''}
 
 ${message_count >= 11 && !conversation.toLowerCase().includes('proceed')
-      ? `You are near the end of the intake. Check coverage across all 10 areas. If any area is shallow, ask one more targeted question. If all areas are covered with depth, synthesize and ask them to type "proceed".`
-      : ''}
+        ? `You are near the end of the intake. Check coverage across all 10 areas. If any area is shallow, ask one more targeted question. If all areas are covered with depth, synthesize and ask them to type "proceed".`
+        : ''}
 
 ════════════════════════════════════
 TONE & STYLE
@@ -1590,30 +1603,34 @@ Analyze all 15 GTM areas and respond ONLY with valid JSON:
 
   async generatePhase3IntakeResponse(messages, projectId) {
     try {
-      const prompt = this.buildPhase3IntakePrompt(messages);
+      const prompt = this.buildIntakeChatPrompt(chatData);
       let model = this.primaryModel;
       let modelName = 'gemini-2.5-flash';
 
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          console.log(`Attempt ${attempt}: Using ${modelName} for Phase 3 intake...`);
           const result = await model.generateContent(prompt);
           const response = await result.response;
           const text = response.text();
+          if (!text || !text.trim()) throw new Error('Empty response from model');
           return { response: text.trim(), model: modelName };
         } catch (error) {
           console.error(`Attempt ${attempt} failed with ${modelName}:`, error.message);
-          if (attempt === 1 && (error.message.includes('503') || error.message.includes('429') || error.message.includes('quota'))) {
+          if (attempt === 1) {
+            // Always swap to fallback on first failure, regardless of error type
             model = this.fallbackModel;
             modelName = 'gemini-1.5-flash';
+            await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
           }
-          throw error;
+          // Attempt 2 failed — return fallback response instead of throwing
+          console.warn('Both models failed, returning fallback intake response');
+          return this.getFallbackIntakeResponse(chatData);
         }
       }
     } catch (error) {
-      console.error('Error in generatePhase3IntakeResponse:', error);
-      throw error;
+      console.error('Error generating intake chat:', error);
+      return this.getFallbackIntakeResponse(chatData);
     }
   }
 
@@ -1666,7 +1683,10 @@ YOUR CORE BEHAVIORAL RULES
    Never stack two questions. Pick the single most important unanswered thing
    within the CURRENT area.
 
-4. MAX FOLLOW-UPS: 2 per area, 10 total across the conversation.
+4. MAX FOLLOW-UPS: 3 per area ceiling, 10 total — only when needed.
+   If the founder's answer is clear and complete, ask zero follow-ups and advance.
+   Follow-ups exist to resolve genuine ambiguity, not to fill a quota.
+   Once the global limit of 10 is reached, synthesize and move toward completion.
 
 5. EARN THE NEXT TOPIC
    Only move on when the current area has genuine depth.
@@ -1800,12 +1820,12 @@ PROGRESS SO FAR: ${message_count} user messages sent.
 - Message 16+: If all 15 areas are covered with depth, provide a 2–3 sentence synthesis then ask them to type "proceed".
 
 ${message_count >= 16 && conversation.toLowerCase().includes('proceed')
-      ? `The founder has typed "proceed". Extract all information from the conversation and emit the completion signal with real data filled in:\n\n${completionMessage}`
-      : ''}
+        ? `The founder has typed "proceed". Extract all information from the conversation and emit the completion signal with real data filled in:\n\n${completionMessage}`
+        : ''}
 
 ${message_count >= 16 && !conversation.toLowerCase().includes('proceed')
-      ? `You are near the end of the intake. Check coverage across all 15 areas. If any area is shallow, ask one more targeted question. If all areas are covered with depth, synthesize and ask them to type "proceed".`
-      : ''}
+        ? `You are near the end of the intake. Check coverage across all 15 areas. If any area is shallow, ask one more targeted question. If all areas are covered with depth, synthesize and ask them to type "proceed".`
+        : ''}
 
 ════════════════════════════════════
 TONE & STYLE

@@ -112,7 +112,16 @@ const userSchema = new mongoose.Schema({
   profile_document_url: String,
   profile_submission_date: Date,
   profile_review_date: Date,
-  profile_review_notes: String
+  profile_review_notes: String,
+  // Profile completion notification tracking
+  profile_notification_schedule: {
+    last_6h_notification: Date,
+    last_24h_notification: Date,
+    last_3d_notification: Date,
+    last_7d_notification: Date,
+    last_weekly_notification: Date,
+    weekly_notification_count: { type: Number, default: 0 }
+  }
 }, {
   timestamps: true
 });

@@ -45,6 +45,23 @@ app.use('/api/ai', require('./routes/ai'));
 const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
 
+// Start background jobs
+const profileNotificationJob = require('./jobs/profileNotificationJob');
+profileNotificationJob.start();
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  profileNotificationJob.stop();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  profileNotificationJob.stop();
+  process.exit(0);
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
