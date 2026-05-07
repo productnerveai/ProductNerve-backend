@@ -86,9 +86,7 @@ exports.signup = async (req, res, next) => {
 // @access  Public
 exports.login = async (req, res, next) => {
   try {
-    console.log('Login function called');
     const { email, password } = req.body;
-    console.log('Login request body:', { email, password: '***' });
 
     // Validate email & password
     if (!email || !password) {
@@ -100,7 +98,6 @@ exports.login = async (req, res, next) => {
 
     // Check for user
     const user = await User.findOne({ email }).select('+password');
-    console.log('Found user:', user ? 'Yes' : 'No');
 
     if (!user) {
       return res.status(401).json({
@@ -111,7 +108,6 @@ exports.login = async (req, res, next) => {
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
-    console.log('Password match:', isMatch);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -156,6 +152,8 @@ exports.login = async (req, res, next) => {
         plan_type: user.plan_type,
         subscription_status: user.subscription_status,
         role: user.role,
+        admin_role: user.admin_role,
+        admin_permissions: user.admin_permissions,
         email_verified: user.email_verified,
         user_status: user.user_status,
         created_at: user.createdAt

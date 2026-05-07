@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
   },
   subscription_plan: {
     type: String,
-    enum: ['pro', 'enterprise']
+    enum: ['free', 'pro', 'enterprise']
   },
   subscription_status: {
     type: String,
@@ -79,13 +79,31 @@ const userSchema = new mongoose.Schema({
   },
   user_status: {
     type: String,
-    enum: ['active', 'inactive'],
+    enum: ['active', 'inactive', 'suspended', 'deactivated'],
     default: 'active'
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user', 'admin', 'product_analyst', 'support_specialist', 'growth_analyst'],
     default: 'user'
+  },
+  admin_role: {
+    type: String,
+    enum: ['admin', 'product_analyst', 'support_specialist', 'growth_analyst'],
+    default: null
+  },
+  admin_permissions: {
+    can_manage_users: { type: Boolean, default: false },
+    can_manage_billing: { type: Boolean, default: false },
+    can_view_analytics: { type: Boolean, default: false },
+    can_manage_workspaces: { type: Boolean, default: false },
+    can_view_kyc: { type: Boolean, default: false },
+    can_view_contacts: { type: Boolean, default: false },
+    can_view_communications: { type: Boolean, default: false },
+    can_manage_content: { type: Boolean, default: false },
+    can_manage_settings: { type: Boolean, default: false },
+    can_view_security: { type: Boolean, default: false },
+    can_promote_to_admin: { type: Boolean, default: false }
   },
   password_reset_token: String,
   password_reset_expires: Date,
@@ -115,26 +133,22 @@ const userSchema = new mongoose.Schema({
   profile_review_notes: String,
   // Profile completion notification tracking
   profile_notification_schedule: {
-    last_6h_notification: Date,
-    last_24h_notification: Date,
-    last_3d_notification: Date,
-    last_7d_notification: Date,
-    last_weekly_notification: Date,
-    weekly_notification_count: { type: Number, default: 0 }
+    sent_24h: { type: Date, default: null },
+    sent_3d: { type: Date, default: null },
+    sent_7d: { type: Date, default: null },
   }
 }, {
   timestamps: true
 });
 
-// Password hashing will be handled in the controller
 
 // Match user entered password to hashed password in database
-userSchema.methods.matchPassword = async function(enteredPassword) {
+userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // Generate and hash password token
-userSchema.methods.getResetPasswordToken = function() {
+userSchema.methods.getResetPasswordToken = function () {
   // Generate random token
   const resetToken = require('crypto').randomBytes(20).toString('hex');
 
@@ -151,7 +165,7 @@ userSchema.methods.getResetPasswordToken = function() {
 };
 
 // Generate email verification token
-userSchema.methods.getEmailVerificationToken = function() {
+userSchema.methods.getEmailVerificationToken = function () {
   // Generate random token
   const verificationToken = require('crypto').randomBytes(32).toString('hex');
 
@@ -168,19 +182,19 @@ userSchema.methods.getEmailVerificationToken = function() {
 };
 
 // Generate 6-digit email verification code
-userSchema.methods.getEmailVerificationCode = function() {
+userSchema.methods.getEmailVerificationCode = function () {
   // Generate 6-digit code
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
   // Set code and expire (10 minutes)
   this.email_verification_code = code;
   this.email_verification_code_expires = Date.now() + 10 * 60 * 1000;
-  
+
   return code;
 };
 
 // Verify 6-digit code
-userSchema.methods.verifyEmailCode = function(enteredCode) {
+userSchema.methods.verifyEmailCode = function (enteredCode) {
   return (
     this.email_verification_code === enteredCode &&
     this.email_verification_code_expires > Date.now()

@@ -43,6 +43,8 @@ app.use('/api/ai', require('./routes/ai'));
 app.post('/api/phase2-intake-chat', require('./controllers/aiController').generatePhase2IntakeResponse);
 app.post('/api/phase3-intake-chat', require('./controllers/aiController').generatePhase3IntakeResponse);
 app.use('/api', require('./routes/ragRoutes'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Error handling middleware
 const errorHandler = require('./middleware/errorHandler');
