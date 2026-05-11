@@ -10,7 +10,9 @@ const {
   getAllPages,
   createPage,
   updatePage,
-  deletePage
+  deletePage,
+  getStudioContent,
+  deleteStudioContent
 } = require('../controllers/adminContentController');
 const { protect } = require('../middleware/auth');
 const { requireAdmin, requirePermission } = require('../middleware/adminAuth');
@@ -57,5 +59,15 @@ router.put('/content/pages/:id', updatePage);
 
 // Delete content page
 router.delete('/content/pages/:id', deletePage);
+
+/**
+ * Studio Content Management
+ */
+
+// Get all studio content
+router.get('/studio/content', getStudioContent);
+
+// Delete studio content
+router.delete('/studio/:toolType/:id', deleteStudioContent);
 
 module.exports = router;

@@ -504,3 +504,118 @@ exports.deletePage = asyncHandler(async (req, res) => {
     message: 'Page deleted successfully'
   });
 });
+
+/**
+ * @desc    Get all studio content
+ * @route   GET /api/admin/studio/content
+ * @access  Admin (can_manage_content)
+ */
+exports.getStudioContent = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 0;
+  const limit = parseInt(req.query.limit) || 25;
+  const toolType = req.query.toolType || '';
+  const search = req.query.search || '';
+  const sortBy = req.query.sortBy || 'createdAt';
+  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+  // Import studio models
+  const ICP = require('../models/ICP');
+  const UserStory = require('../models/UserStory');
+  const PRD = require('../models/PRD');
+
+  // Get all studio content from different models
+  const [icpProfiles, userStories, prdDocuments] = await Promise.all([
+    ICP.find().populate('user_id', 'email first_name last_name').sort({ [sortBy]: sortOrder }),
+    UserStory.find().populate('user_id', 'email first_name last_name').sort({ [sortBy]: sortOrder }),
+    PRD.find().populate('user_id', 'email first_name last_name').sort({ [sortBy]: sortOrder })
+  ]);
+
+  // Combine all content with type information
+  const allContent = [
+    ...icpProfiles.map(item => ({ ...item.toObject(), toolType: 'icp_profiles' })),
+    ...userStories.map(item => ({ ...item.toObject(), toolType: 'user_stories' })),
+    ...prdDocuments.map(item => ({ ...item.toObject(), toolType: 'prd_documents' }))
+  ];
+
+  // Filter by tool type if specified
+  const filteredContent = toolType 
+    ? allContent.filter(item => item.toolType === toolType)
+    : allContent;
+
+  // Filter by search if specified
+  const searchedContent = search
+    ? filteredContent.filter(item => 
+        item.title?.toLowerCase().includes(search.toLowerCase()) ||
+        item.description?.toLowerCase().includes(search.toLowerCase()) ||
+        item.user_id?.email?.toLowerCase().includes(search.toLowerCase())
+      )
+    : filteredContent;
+
+  // Sort combined content
+  searchedContent.sort((a, b) => {
+    const aValue = a[sortBy];
+    const bValue = b[sortBy];
+    if (aValue < bValue) return sortOrder;
+    if (aValue > bValue) return -sortOrder;
+    return 0;
+  });
+
+  // Paginate
+  const startIndex = page * limit;
+  const endIndex = startIndex + limit;
+  const paginatedContent = searchedContent.slice(startIndex, endIndex);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      content: paginatedContent,
+      pagination: {
+        page,
+        limit,
+        total: searchedContent.length,
+        pages: Math.ceil(searchedContent.length / limit)
+      }
+    }
+  });
+});
+
+/**
+ * @desc    Delete studio content
+ * @route   DELETE /api/admin/studio/:toolType/:id
+ * @access  Admin (can_manage_content)
+ */
+exports.deleteStudioContent = asyncHandler(async (req, res) => {
+  const { toolType, id } = req.params;
+
+  let Model;
+  switch (toolType) {
+    case 'icp_profiles':
+      Model = require('../models/ICP');
+      break;
+    case 'user_stories':
+      Model = require('../models/UserStory');
+      break;
+    case 'prd_documents':
+      Model = require('../models/PRD');
+      break;
+    default:
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid tool type'
+      });
+  }
+
+  const content = await Model.findByIdAndDelete(id);
+
+  if (!content) {
+    return res.status(404).json({
+      success: false,
+      error: 'Content not found'
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Content deleted successfully'
+  });
+});

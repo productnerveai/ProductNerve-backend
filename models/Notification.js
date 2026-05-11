@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     required: [true, 'Please add a notification type'],
-    enum: ['account_suspended', 'account_activated', 'account_deactivated', 'admin_promotion', 'admin_demotion', 'access_granted', 'payment_received', 'project_unlocked', 'profile_completion_reminder', 'system_update'],
+    enum: ['account_suspended', 'account_activated', 'account_deactivated', 'admin_promotion', 'admin_demotion', 'access_granted', 'payment_received', 'project_unlocked', 'profile_completion_reminder', 'kyc_approved', 'kyc_rejected', 'ticket_created', 'ticket_updated', 'ticket_responded', 'system_update'],
     default: 'system_update'
   },
   title: {
@@ -23,6 +23,10 @@ const notificationSchema = new mongoose.Schema({
     maxlength: [1000, 'Message cannot be more than 1000 characters']
   },
   read: {
+    type: Boolean,
+    default: false
+  },
+  archived: {
     type: Boolean,
     default: false
   },

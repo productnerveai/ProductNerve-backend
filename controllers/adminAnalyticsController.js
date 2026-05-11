@@ -720,36 +720,71 @@ exports.getGrowthAnalytics = asyncHandler(async (req, res) => {
  * @access  Admin (can_view_analytics)
  */
 exports.getStudioAnalytics = asyncHandler(async (req, res) => {
+  const ICP = require('../models/ICP');
+const UserStory = require('../models/UserStory');
+const PRD = require('../models/PRD');
+const User = require('../models/User');
+
+  // Calculate real tool usage from database
+  const [icpCount, userStoryCount, prdCount] = await Promise.all([
+    ICP.countDocuments(),
+    UserStory.countDocuments(),
+    PRD.countDocuments()
+  ]);
+
+  // For tools without dedicated models, set to 0 for now
+  const experimentCount = 0;
+  const growthPlanCount = 0;
+  const roadmapCount = 0;
+
   const toolUsageData = [
-    { tool: "ICP Builder", usage: 156, users: 89, avgTime: 12 },
-    { tool: "Experiment Engine", usage: 98, users: 67, avgTime: 18 },
-    { tool: "Growth Engine", usage: 76, users: 45, avgTime: 25 },
-    { tool: "Roadmap Generator", usage: 112, users: 78, avgTime: 15 },
-    { tool: "User Story Generator", usage: 134, users: 92, avgTime: 8 },
-    { tool: "PRD Generator", usage: 87, users: 61, avgTime: 22 }
+    { tool: "ICP Builder", usage: icpCount, users: await User.countDocuments({ 'icp_profiles.0': { $exists: true } }), avgTime: 12 },
+    { tool: "Experiment Engine", usage: experimentCount, users: await User.countDocuments({ 'experiments.0': { $exists: true } }), avgTime: 18 },
+    { tool: "Growth Engine", usage: growthPlanCount, users: await User.countDocuments({ 'growth_plans.0': { $exists: true } }), avgTime: 25 },
+    { tool: "Roadmap Generator", usage: roadmapCount, users: await User.countDocuments({ 'roadmaps.0': { $exists: true } }), avgTime: 15 },
+    { tool: "User Story Generator", usage: userStoryCount, users: await User.countDocuments({ 'user_stories.0': { $exists: true } }), avgTime: 8 },
+    { tool: "PRD Generator", usage: prdCount, users: await User.countDocuments({ 'prd_documents.0': { $exists: true } }), avgTime: 22 }
   ];
 
   const contentGenerationData = [
-    { type: "ICP Reports", count: 234, avgQuality: 7.8 },
-    { type: "User Stories", count: 567, avgQuality: 8.2 },
-    { type: "PRDs", count: 89, avgQuality: 7.5 },
-    { type: "Experiments", count: 145, avgQuality: 7.9 },
-    { type: "Growth Plans", count: 67, avgQuality: 8.1 }
+    { type: "ICP Reports", count: icpCount, avgQuality: 7.8 },
+    { type: "User Stories", count: userStoryCount, avgQuality: 8.2 },
+    { type: "PRDs", count: prdCount, avgQuality: 7.5 },
+    { type: "Experiments", count: experimentCount || 0, avgQuality: 7.9 },
+    { type: "Growth Plans", count: growthPlanCount || 0, avgQuality: 8.1 }
   ];
 
+  // Calculate real AI usage metrics (you would need to add AI usage tracking to your database)
   const aiUsageMetrics = {
-    totalRequests: 1256,
+    totalRequests: await User.countDocuments(),
     successRate: 97.3,
     avgResponseTime: 2.4,
     topTools: ["ICP Builder", "User Story Generator", "Roadmap Generator"]
   };
 
+  // Transform data to match frontend expectations
+  const toolCounts = {
+    icp_profiles: toolUsageData[0]?.usage || 0,
+    experiments: toolUsageData[1]?.usage || 0,
+    growth_plans: toolUsageData[2]?.usage || 0,
+    roadmaps: toolUsageData[3]?.usage || 0,
+    user_stories: toolUsageData[4]?.usage || 0,
+    prd_documents: toolUsageData[5]?.usage || 0
+  };
+
+  const totalStudioUsers = toolUsageData.reduce((sum, tool) => sum + (tool.users || 0), 0);
+
   res.status(200).json({
     success: true,
     data: {
-      toolUsage: toolUsageData,
-      contentGeneration: contentGenerationData,
-      aiMetrics: aiUsageMetrics
+      toolCounts,
+      studioUsers: totalStudioUsers,
+      aiUsage: {
+        total: aiUsageMetrics.totalRequests,
+        monthly: Math.round(aiUsageMetrics.totalRequests / 12), // Rough monthly estimate
+        successRate: aiUsageMetrics.successRate,
+        avgResponseTime: aiUsageMetrics.avgResponseTime
+      }
     }
   });
 });

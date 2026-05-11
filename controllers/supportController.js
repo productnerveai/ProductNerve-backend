@@ -35,7 +35,7 @@ exports.getUserTickets = asyncHandler(async (req, res) => {
   if (type) query.feedback_type = type;
 
   const tickets = await SupportTicket.find(query)
-    .sort({ created_at: -1 })
+    .sort({ createdAt: -1 })
     .limit(limit)
     .skip((page - 1) * limit)
     .populate('admin_id', 'first_name last_name email');

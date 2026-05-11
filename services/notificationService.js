@@ -297,9 +297,9 @@ class NotificationService {
               <div class="footer">
                   <div class="footer-text">&copy; 2024 ProductNerve. All rights reserved.</div>
                   <div class="footer-links">
-                      <a href="#">Privacy Policy</a> • 
-                      <a href="#">Terms of Service</a> • 
-                      <a href="#">Support</a>
+                      <a href="${process.env.FRONTEND_URL}/privacy">Privacy Policy</a> • 
+                      <a href="${process.env.FRONTEND_URL}/terms-and-conditions">Terms of Service</a> • 
+                      <a href="${process.env.FRONTEND_URL}/app/support">Support</a>
                   </div>
                   <div class="footer-text">This message was sent to ${user.email}</div>
               </div>

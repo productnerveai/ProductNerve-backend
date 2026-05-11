@@ -18,7 +18,7 @@ exports.getAllWorkspaces = asyncHandler(async (req, res) => {
 
   // Build query
   const query = {};
-  
+
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -41,11 +41,17 @@ exports.getAllWorkspaces = asyncHandler(async (req, res) => {
     .limit(limit);
 
   // Get project counts for each workspace
+  // Get project counts for each workspace
   const workspacesWithProjects = await Promise.all(workspaces.map(async (workspace) => {
-    const projectCount = await Project.countDocuments({ workspace_id: workspace._id });
-    const activeProjects = await Project.countDocuments({ 
-      workspace_id: workspace._id,
-      status: { $in: ['planning', 'ideation', 'validation', 'execution', 'growth'] }
+    const workspaceId = workspace._id; // ObjectId
+
+    const projectCount = await Project.countDocuments({ workspace_id: workspaceId });
+
+    const activeProjects = await Project.countDocuments({
+      workspace_id: workspaceId,
+      status: { $in: ['active'] }  // ✅ matches your Project schema's actual status enum
+      // Your schema uses: 'paused' | 'active' | 'killed' | 'scaled'
+      // NOT: 'planning', 'ideation', etc. — those are `stage` field values
     });
 
     return {
@@ -130,10 +136,10 @@ exports.getWorkspaceById = asyncHandler(async (req, res) => {
 exports.updateWorkspaceStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
 
-  if (!['active', 'archived'].includes(status)) {
+  if (!['active', 'archived', 'locked', 'suspended'].includes(status)) {
     return res.status(400).json({
       success: false,
-      error: 'Invalid status. Must be active or archived'
+      error: 'Invalid status. Must be active, archived, locked, or suspended'
     });
   }
 
@@ -177,7 +183,7 @@ exports.deleteWorkspace = asyncHandler(async (req, res) => {
 
   // Delete all projects in this workspace
   await Project.deleteMany({ workspace_id: workspace._id });
-  
+
   // Delete the workspace
   await Workspace.findByIdAndDelete(req.params.id);
 
@@ -203,7 +209,7 @@ exports.getAllProjects = asyncHandler(async (req, res) => {
 
   // Build query
   const query = {};
-  
+
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -378,7 +384,7 @@ exports.deleteProject = asyncHandler(async (req, res) => {
 exports.getProjectStats = asyncHandler(async (req, res) => {
   const totalProjects = await Project.countDocuments();
   const activeProjects = await Project.countDocuments({ 
-    status: { $in: ['planning', 'ideation', 'validation', 'execution', 'growth'] }
+    status: 'active'  // ✅ instead of $in: ['planning', 'ideation', ...]
   });
   const completedProjects = await Project.countDocuments({ status: 'completed' });
   const pausedProjects = await Project.countDocuments({ status: 'paused' });

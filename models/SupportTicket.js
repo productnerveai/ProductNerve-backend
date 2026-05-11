@@ -50,7 +50,7 @@ const supportTicketSchema = new mongoose.Schema({
 });
 
 // Index for faster queries
-supportTicketSchema.index({ user_id: 1, created_at: -1 });
+supportTicketSchema.index({ user_id: 1, createdAt: -1 });
 supportTicketSchema.index({ status: 1 });
 supportTicketSchema.index({ feedback_type: 1 });
 

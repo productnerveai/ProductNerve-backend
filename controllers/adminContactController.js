@@ -1,6 +1,7 @@
 const SupportTicket = require('../models/SupportTicket');
 const TicketReply = require('../models/TicketReply');
 const User = require('../models/User');
+const NotificationService = require('../services/notificationService');
 const asyncHandler = require('../middleware/asyncHandler');
 
 /**
@@ -177,6 +178,21 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const populatedTicket = await SupportTicket.findById(ticket._id)
     .populate('user_id', 'email first_name last_name company_name');
 
+  // Create notification for ticket creation
+  await NotificationService.createNotification({
+    user_id: userId,
+    type: 'ticket_created',
+    title: 'Support Ticket Created',
+    message: `Your support ticket "${title}" has been created successfully. We'll respond as soon as possible.`,
+    metadata: {
+      ticket_id: ticket._id,
+      ticket_title: title,
+      priority: priority || 'medium',
+      feedback_type: feedback_type || 'support'
+    },
+    sendEmail: true
+  });
+
   res.status(201).json({
     success: true,
     data: populatedTicket,
@@ -219,6 +235,22 @@ exports.updateTicketStatus = asyncHandler(async (req, res) => {
   }
 
   await ticket.save();
+
+  // Create notification for ticket status update
+  await NotificationService.createNotification({
+    user_id: ticket.user_id,
+    type: 'ticket_updated',
+    title: `Support Ticket ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+    message: `Your support ticket "${ticket.title}" status has been updated to ${status}.`,
+    metadata: {
+      ticket_id: ticket._id,
+      ticket_title: ticket.title,
+      old_status: 'open',
+      new_status: status,
+      updated_by: req.user.id
+    },
+    sendEmail: true
+  });
 
   res.status(200).json({
     success: true,
@@ -276,6 +308,22 @@ exports.replyToTicket = asyncHandler(async (req, res) => {
   }
 
   await ticket.save();
+
+  // Create notification for admin reply
+  await NotificationService.createNotification({
+    user_id: ticket.user_id,
+    type: 'ticket_responded',
+    title: 'Support Ticket Response',
+    message: `An admin has responded to your support ticket "${ticket.title}". Check your ticket for details.`,
+    metadata: {
+      ticket_id: ticket._id,
+      ticket_title: ticket.title,
+      admin_reply: message,
+      responded_by: req.user.id,
+      response_date: new Date()
+    },
+    sendEmail: true
+  });
 
   const populatedReply = await TicketReply.findById(reply._id)
     .populate('admin_id', 'first_name last_name');

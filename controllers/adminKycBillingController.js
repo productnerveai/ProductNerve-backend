@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const NotificationService = require('../services/notificationService');
 const asyncHandler = require('../middleware/asyncHandler');
 
 /**
@@ -13,9 +14,9 @@ exports.getAllKycSubmissions = asyncHandler(async (req, res) => {
   const sortBy = req.query.sortBy || 'profile_submission_date';
   const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
 
-  // Build query
+  // Build query - include users who have submitted or pending KYC
   const query = {
-    profile_completion_status: { $ne: 'not_submitted' }
+    profile_completion_status: { $in: ['pending', 'submitted', 'approved', 'rejected'] }
   };
   
   if (status) {
@@ -23,11 +24,13 @@ exports.getAllKycSubmissions = asyncHandler(async (req, res) => {
   }
 
   // Get total count
+  console.log('KYC Query:', query);
   const total = await User.countDocuments(query);
+  console.log('KYC Total Count:', total);
 
   // Get users with KYC submissions
   const users = await User.find(query)
-    .select('email first_name last_name company_name profile_completion_status profile_submission_date profile_review_date profile_review_notes profile_document_url')
+    .select('email first_name last_name company_name official_company_name phone registration_number website custom_email profile_completion_status profile_submission_date profile_review_date profile_review_notes profile_document_url')
     .sort({ [sortBy]: sortOrder })
     .skip(page * limit)
     .limit(limit);
@@ -38,12 +41,31 @@ exports.getAllKycSubmissions = asyncHandler(async (req, res) => {
     first_name: user.first_name,
     last_name: user.last_name,
     company_name: user.company_name,
+    official_company_name: user.official_company_name,
+    phone: user.phone,
+    registration_number: user.registration_number,
+    website: user.website,
+    custom_email: user.custom_email,
     profile_completion_status: user.profile_completion_status,
     profile_submission_date: user.profile_submission_date,
     profile_review_date: user.profile_review_date,
     profile_review_notes: user.profile_review_notes,
-    profile_document_url: user.profile_document_url
+    profile_document_url: user.profile_document_url,
+    created_at: user.profile_submission_date  // Use submission date as created_at
   }));
+
+  console.log('KYC Response Data:', {
+    success: true,
+    data: {
+      submissions: kycSubmissions,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    }
+  });
 
   res.status(200).json({
     success: true,
@@ -146,6 +168,20 @@ exports.approveKyc = asyncHandler(async (req, res) => {
 
   await user.save();
 
+  // Create notification for KYC approval
+  await NotificationService.createNotification({
+    user_id: user._id,
+    type: 'kyc_approved',
+    title: 'KYC Verification Approved',
+    message: 'Your KYC verification has been approved. You now have full access to all platform features.',
+    metadata: {
+      approval_date: new Date(),
+      reviewer_notes: notes || '',
+      company_name: user.company_name
+    },
+    sendEmail: true
+  });
+
   res.status(200).json({
     success: true,
     data: {
@@ -204,6 +240,21 @@ exports.rejectKyc = asyncHandler(async (req, res) => {
   };
 
   await user.save();
+
+  // Create notification for KYC rejection
+  await NotificationService.createNotification({
+    user_id: user._id,
+    type: 'kyc_rejected',
+    title: 'KYC Verification Rejected',
+    message: `Your KYC verification has been rejected. Reason: ${notes}`,
+    metadata: {
+      rejection_date: new Date(),
+      rejection_reason: notes,
+      company_name: user.company_name,
+      can_resubmit: true
+    },
+    sendEmail: true
+  });
 
   res.status(200).json({
     success: true,
