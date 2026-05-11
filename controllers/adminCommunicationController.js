@@ -240,6 +240,37 @@ exports.archiveNotification = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Unarchive notification
+// @route   PUT /api/admin/communications/notifications/:id/unarchive
+// @access  Admin (can_view_contacts)
+exports.unarchiveNotification = asyncHandler(async (req, res) => {
+  try {
+    const notification = await Notification.findByIdAndUpdate(
+      req.params.id,
+      { archived: false },
+      { new: true, runValidators: true }
+    ).populate('user_id', 'first_name last_name email');
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        error: 'Notification not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: notification,
+      message: 'Notification unarchived successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to unarchive notification'
+    });
+  }
+});
+
 // @desc    Delete notification
 // @route   DELETE /api/admin/communications/notifications/:id
 // @access  Admin (can_view_contacts)

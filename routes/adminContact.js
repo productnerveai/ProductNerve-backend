@@ -72,6 +72,9 @@ router.post('/communications/notifications/:id/resend', requirePermission('can_v
 // Archive notification
 router.put('/communications/notifications/:id/archive', requirePermission('can_view_contacts'), archiveNotification);
 
+// Unarchive notification
+router.put('/communications/notifications/:id/unarchive', requirePermission('can_view_contacts'), unarchiveNotification);
+
 // Delete notification
 router.delete('/communications/notifications/:id', requirePermission('can_view_contacts'), deleteNotification);
 
