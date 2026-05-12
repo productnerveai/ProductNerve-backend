@@ -93,6 +93,40 @@ exports.getPlatformAnalytics = asyncHandler(async (req, res) => {
     status: 'completed'
   });
 
+  // Calculate user growth over time
+  const userGrowthQuery = startDate ? { createdAt: { $gte: startDate } } : {};
+  const userGrowth = await User.aggregate([
+    {
+      $match: userGrowthQuery
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        signups: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { _id: 1 }
+    }
+  ]);
+
+  // Calculate project activity over time
+  const projectActivityQuery = startDate ? { createdAt: { $gte: startDate } } : {};
+  const projectActivity = await Project.aggregate([
+    {
+      $match: projectActivityQuery
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        created: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { _id: 1 }
+    }
+  ]);
+
   // Run all PostHog queries in parallel
   const [
     totalVisitorsResult,
@@ -262,7 +296,11 @@ exports.getPlatformAnalytics = asyncHandler(async (req, res) => {
         active: activeUsers,
         dau: dau,
         wau: wau,
-        mau: mau
+        mau: mau,
+        growth: userGrowth.map(item => ({
+          date: item._id,
+          signups: item.signups
+        }))
       },
       
       // Workspace metrics
@@ -275,7 +313,11 @@ exports.getPlatformAnalytics = asyncHandler(async (req, res) => {
       projects: {
         total: totalProjects,
         active: activeProjects,
-        completed: completedProjects
+        completed: completedProjects,
+        activity: projectActivity.map(item => ({
+          date: item._id,
+          created: item.created
+        }))
       },
       
       // Conversions and revenue
