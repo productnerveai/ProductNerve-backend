@@ -13,7 +13,8 @@ const {
   changePassword,
   updateProfile,
   submitProfileCompletion,
-  getProfileCompletionStatus
+  getProfileCompletionStatus,
+  updateCookieConsent
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const {
@@ -48,5 +49,6 @@ router.post('/profile-completion', protect, validateProfileCompletion, submitPro
 router.get('/profile-completion', protect, getProfileCompletionStatus);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
+router.put('/cookie-consent', protect, updateCookieConsent);
 
 module.exports = router;

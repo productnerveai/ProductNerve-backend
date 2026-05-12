@@ -49,6 +49,50 @@ exports.getPlatformAnalytics = asyncHandler(async (req, res) => {
   dateFilter = startDate
     ? `timestamp >= '${startDate.toISOString().split('T')[0]}' AND properties.$current_url LIKE '%productnerve.com%'`
     : `properties.$current_url LIKE '%productnerve.com%'`;
+  
+  // Calculate user metrics
+  const dauStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const wauStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const mauStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  let dau = await User.countDocuments({ last_login: { $gte: dauStart } });
+  let wau = await User.countDocuments({ last_login: { $gte: wauStart } });
+  let mau = await User.countDocuments({ last_login: { $gte: mauStart } });
+
+  if (dau === 0) dau = await User.countDocuments({ createdAt: { $gte: dauStart } });
+  if (wau === 0) wau = await User.countDocuments({ createdAt: { $gte: wauStart } });
+  if (mau === 0) mau = await User.countDocuments({ createdAt: { $gte: mauStart } });
+
+  const totalUsers = await User.countDocuments();
+  const activeUsers = await User.countDocuments({ last_login: { $gte: dauStart } });
+
+  // Calculate conversions and revenue
+  const paidUsers = await User.countDocuments({ 
+    plan_type: { $in: ['pro', 'enterprise', 'project_unlock'] }
+  });
+  
+  const revenueDateQuery = startDate ? { createdAt: { $gte: startDate } } : {};
+  const paidUsersInPeriod = await User.countDocuments({ 
+    ...revenueDateQuery,
+    plan_type: { $in: ['pro', 'enterprise', 'project_unlock'] }
+  });
+
+  // Calculate workspace and project metrics
+  const workspaceDateQuery = startDate ? { createdAt: { $gte: startDate } } : {};
+  const totalWorkspaces = await Workspace.countDocuments();
+  const activeWorkspaces = await Workspace.countDocuments(workspaceDateQuery);
+
+  const projectDateQuery = startDate ? { createdAt: { $gte: startDate } } : {};
+  const totalProjects = await Project.countDocuments();
+  const activeProjects = await Project.countDocuments({ 
+    ...projectDateQuery,
+    status: { $in: ['active', 'in_progress'] }
+  });
+  const completedProjects = await Project.countDocuments({ 
+    ...projectDateQuery,
+    status: 'completed'
+  });
+
   // Run all PostHog queries in parallel
   const [
     totalVisitorsResult,
@@ -212,6 +256,37 @@ exports.getPlatformAnalytics = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
+      // User metrics
+      users: {
+        total: totalUsers,
+        active: activeUsers,
+        dau: dau,
+        wau: wau,
+        mau: mau
+      },
+      
+      // Workspace metrics
+      workspaces: {
+        total: totalWorkspaces,
+        active: activeWorkspaces
+      },
+      
+      // Project metrics
+      projects: {
+        total: totalProjects,
+        active: activeProjects,
+        completed: completedProjects
+      },
+      
+      // Conversions and revenue
+      conversions: {
+        paid: paidUsersInPeriod
+      },
+      revenue: {
+        total: paidUsers * 29 // Assuming $29 per paid user (adjust as needed)
+      },
+      
+      // Visitor analytics from PostHog
       totalVisitors: totalVisitorsResult?.[0]?.[0] || 0,
       uniqueVisitors: uniqueVisitorsResult?.[0]?.[0] || 0,
       totalPageViews: totalPageViews,

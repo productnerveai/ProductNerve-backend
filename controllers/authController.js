@@ -821,3 +821,37 @@ exports.resendVerification = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Update cookie consent
+// @route   PUT /api/auth/cookie-consent
+// @access  Private
+exports.updateCookieConsent = asyncHandler(async (req, res) => {
+  try {
+    const { cookie_consent, cookie_consent_at } = req.body;
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    user.cookie_consent = cookie_consent;
+    user.cookie_consent_at = cookie_consent_at;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Cookie consent updated successfully'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update cookie consent'
+    });
+  }
+});

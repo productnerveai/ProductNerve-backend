@@ -14,9 +14,24 @@ exports.getProjects = asyncHandler(async (req, res) => {
 
   let query = {};
   
-  // If workspace_id is in params, filter by workspace
-  if (req.params.workspace_id) {
-    // Verify user owns the workspace
+  // If workspace_id is in query params, filter by workspace
+  if (req.query.workspace_id) {
+    // Verify user owns workspace
+    const workspace = await Workspace.findOne({
+      _id: req.query.workspace_id,
+      user_id: req.user.id
+    });
+
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+    }
+
+    query.workspace_id = req.query.workspace_id;
+  } else if (req.params.workspace_id) {
+    // Also check route params for backward compatibility
     const workspace = await Workspace.findOne({
       _id: req.params.workspace_id,
       user_id: req.user.id

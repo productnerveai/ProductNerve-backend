@@ -135,7 +135,15 @@ const userSchema = new mongoose.Schema({
   profile_notification_schedule: {
     sent_24h: { type: Date, default: null },
     sent_3d: { type: Date, default: null },
-    sent_7d: { type: Date, default: null },
+    sent_7d: { type: Date, default: null }
+  },
+  // Cookie consent tracking
+  cookie_consent: {
+    type: Boolean,
+    default: null
+  },
+  cookie_consent_at: {
+    type: Date
   }
 }, {
   timestamps: true
